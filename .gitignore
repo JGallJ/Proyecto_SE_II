@@ -1,6 +1,7 @@
 # Ignore build paths
 Debug/
 Release/
+src/sysbios/
 
 *.map
 *.out
