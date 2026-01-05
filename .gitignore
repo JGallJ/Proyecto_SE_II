@@ -1,0 +1,11 @@
+# Ignore build paths
+Debug/
+Release/
+
+*.lib
+*.map
+*.out
+
+# Eclipse / CCS
+.settings/
+.launches/
