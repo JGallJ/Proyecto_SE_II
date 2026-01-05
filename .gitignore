@@ -2,7 +2,6 @@
 Debug/
 Release/
 
-*.lib
 *.map
 *.out
 
