@@ -61,10 +61,12 @@
 void task1_release (void) ;
 void task2_release (void) ;
 void task3_release (void) ;
+void task4_release (void) ;
 
 Void task1(UArg arg0, UArg arg1);
 Void task2(UArg arg0, UArg arg1);
 Void task3(UArg arg0, UArg arg1);
+Void task4(UArg arg0, UArg arg1);
 
 Void Sporadic_Server(UArg arg0, UArg arg1);
 Void swiSS(UArg arg0, UArg arg1);
@@ -87,14 +89,17 @@ Mailbox_Params MbxParams ;
 Clock_Handle tsk1Clock;
 Clock_Handle tsk2Clock;
 Clock_Handle tsk3Clock;
+Clock_Handle tsk4Clock;
 
 Semaphore_Handle task1_sem ;
 Semaphore_Handle task2_sem ;
 Semaphore_Handle task3_sem ;
+Semaphore_Handle task4_sem ;
 
 Task_Handle tsk1;
 Task_Handle tsk2;
 Task_Handle tsk3;
+Task_Handle tsk4;
 Task_Handle tskSS;
 
 Hwi_Handle myHwi ;
@@ -111,7 +116,6 @@ Void myIsr(UArg arg) ;
 
 Void main()
 {
-    /*
     // GPIO Int
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
@@ -127,6 +131,7 @@ Void main()
     Hwi_Params_init(&hwiParams);
     hwiParams.maskSetting = Hwi_MaskingOption_SELF;
     myHwi = Hwi_create(19, myIsr, &hwiParams, NULL);
+    if (myHwi == NULL) printf("myHwi create failed");
 
     // Mail Box
 
@@ -138,8 +143,9 @@ Void main()
     Swi_Params_init(&swiParams);
     swiParams.priority = 1 ;
     mySwi = Swi_create(swiSS, &swiParams, NULL);
+    if (mySwi == NULL) printf("mySwi create failed");
 
-    // Create three independent tasks
+    // Create four independent tasks
 
     Semaphore_Params_init(&semaphoreParams);
 
@@ -153,6 +159,7 @@ Void main()
     Task_Params_init(&taskParams);
     taskParams.priority = 5;
     tsk1 = Task_create (task1, &taskParams, NULL);
+    if (tsk1 == NULL) printf("Task1 create failed");
 
     Clock_Params_init(&clockParams);
     clockParams.period = 200 ;
@@ -164,30 +171,44 @@ Void main()
     Task_Params_init(&taskParams);
     taskParams.priority = 3;
     tsk2 = Task_create (task2, &taskParams, NULL);
+    if (tsk2 == NULL) printf("Task2 create failed");
 
     Clock_Params_init(&clockParams);
-    clockParams.period = 400 ;
+    clockParams.period = 300 ;
     clockParams.startFlag = TRUE;
-    tsk3Clock = Clock_create((Clock_FuncPtr)task3_release, 400, &clockParams, NULL);
+    tsk3Clock = Clock_create((Clock_FuncPtr)task3_release, 300, &clockParams, NULL);
 
     task3_sem = Semaphore_create(0, &semaphoreParams, NULL);
 
     Task_Params_init(&taskParams);
-    taskParams.priority = 1;
+    taskParams.priority = 2;
     tsk3 = Task_create (task3, &taskParams, NULL);
+    if (tsk3 == NULL) printf("Task3 create failed");
+
+    Clock_Params_init(&clockParams);
+    clockParams.period = 400 ;
+    clockParams.startFlag = TRUE;
+    tsk4Clock = Clock_create((Clock_FuncPtr)task4_release, 400, &clockParams, NULL);
+
+    task4_sem = Semaphore_create(0, &semaphoreParams, NULL);
+
+    Task_Params_init(&taskParams);
+    taskParams.priority = 1;
+    tsk4 = Task_create (task4, &taskParams, NULL);
+    if (tsk4 == NULL) printf("Task4 create failed");
+
+    // Sporadic Server
 
     Task_Params_init(&taskParams);
     taskParams.priority = 4;
     tskSS = Task_create (Sporadic_Server, &taskParams, NULL);
+    if (tskSS == NULL) printf("TaskSS create failed");
+
 
     Crear_Servidores () ;
     Init_Events (50) ;
 
-    Hwi_enable();
-    BIOS_start();
-    */
-
-    SysCtlClockSet(SYSCTL_XTAL_16MHZ | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_SYSDIV_2_5);
+    //SysCtlClockSet(SYSCTL_XTAL_16MHZ | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_SYSDIV_2_5);
 
     initButtons();
 
@@ -214,8 +235,8 @@ Void task1(UArg arg0, UArg arg1)
 {
     for (;;) {
         Semaphore_pend (task1_sem, BIOS_WAIT_FOREVER);
-        CS (10) ;
-        S11 () ;
+        CS(10);
+        S11();
     }
 }
 
@@ -232,8 +253,8 @@ Void task2(UArg arg0, UArg arg1)
 {
     for (;;) {
         Semaphore_pend (task2_sem, BIOS_WAIT_FOREVER);
-        CS (50) ;
-        S21 () ;
+        CS(20);
+        S21();
     }
 }
 
@@ -251,9 +272,28 @@ Void task3(UArg arg0, UArg arg1)
 {
     for (;;) {
         Semaphore_pend (task3_sem, BIOS_WAIT_FOREVER);
-        S22 () ;
-    	CS (30) ;
-    	S12 () ;
+        S22();
+    	CS(40);
+    	S31();
+    }
+}
+
+/*
+ *  ======== task3 ========
+ */
+
+void task4_release (void)
+{
+   Semaphore_post(task4_sem);
+}
+
+Void task4(UArg arg0, UArg arg1)
+{
+    for (;;) {
+        Semaphore_pend (task4_sem, BIOS_WAIT_FOREVER);
+        S12();
+        CS(20);
+        S32();
     }
 }
 
@@ -272,13 +312,13 @@ Void myIsr(UArg arg)
 
  Void swiSS(UArg arg0, UArg arg1) {
 
-//	UInt32 Time_Stamp ;
+	UInt32 Time_Stamp ;
 
-	  Log_write1(UIABenchmark_start, (xdc_IArg)"Ext_Event");
-      CS(15) ;
-	  Log_write1(UIABenchmark_stop, (xdc_IArg)"Ext_Event");
-//    Time_Stamp = Clock_getTicks();
-//    Mailbox_post(Event_Queue, &Time_Stamp, BIOS_NO_WAIT);
+    Log_write1(UIABenchmark_start, (xdc_IArg)"Ext_Event");
+    CS(5) ;
+    Log_write1(UIABenchmark_stop, (xdc_IArg)"Ext_Event");
+    Time_Stamp = Clock_getTicks();
+    Mailbox_post(Event_Queue, &Time_Stamp, BIOS_NO_WAIT);
 }
 
 
@@ -294,7 +334,7 @@ void Sporadic_Server (UArg arg0, UArg arg1) {
 	  Mailbox_pend (Event_Queue, &Time_Stamp, BIOS_WAIT_FOREVER);
 
 	  Log_write1(UIABenchmark_start, (xdc_IArg)"Ext_Event");
-      CS(15) ;
+      CS(5) ;
 	  Log_write1(UIABenchmark_stop, (xdc_IArg)"Ext_Event");
 
 	  if (Time_Stamp > Next_Start) Activation_Time = Time_Stamp ;

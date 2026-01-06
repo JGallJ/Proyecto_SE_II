@@ -33,6 +33,9 @@
 
 Void myIsr_buttons(UArg arg);
 
+Void Swi_func_button_4(UArg arg0, UArg arg1);
+Void Swi_func_button_0(UArg arg0, UArg arg1);
+
 /******************************************************************************/
 /*                        Global variables                                    */
 /******************************************************************************/
@@ -41,8 +44,12 @@ Void myIsr_buttons(UArg arg);
 static bool buttons_pressed[2] = { false, false };
 
 Hwi_Params hwiParams_buttons;
+Swi_Params swiParams_button_4;
+Swi_Params swiParams_button_0;
 
 Hwi_Handle myHwi_buttons;
+Swi_Handle mySwi_button_4;
+Swi_Handle mySwi_button_0;
 
 /******************************************************************************/
 /*                        Functions code                                      */
@@ -80,19 +87,27 @@ void initButtons(void) {
     GPIOIntTypeSet(GPIO_PORTF_BASE, GPIO_PIN_4, GPIO_FALLING_EDGE);
     GPIOIntTypeSet(GPIO_PORTF_BASE, GPIO_PIN_0, GPIO_FALLING_EDGE);
 
-    // Hwi for button 4
+    // Hwi for buttons
     Hwi_Params_init(&hwiParams_buttons);
     hwiParams_buttons.priority = 1;
 
     myHwi_buttons = Hwi_create(INT_GPIOF, myIsr_buttons, &hwiParams_buttons, NULL);
+    if (myHwi_buttons == NULL) printf("myHwi_buttons create failed");
 
     GPIOIntEnable(GPIO_PORTF_BASE, GPIO_PIN_4);
     GPIOIntEnable(GPIO_PORTF_BASE, GPIO_PIN_0);
 
-    // Enable GPIOF interrupt in NVIC
-    //IntEnable(INT_GPIOF);
-    // Enable Master Interrupt
-    //IntMasterEnable();
+    // Swi for button 4
+    Swi_Params_init(&swiParams_button_4);
+    swiParams_button_4.priority = 1 ;
+    mySwi_button_4 = Swi_create(Swi_func_button_4, &swiParams_button_4, NULL);
+    if (mySwi_button_4 == NULL) printf("mySwi_button_4 create failed");
+
+    // Swi for button 0
+    Swi_Params_init(&swiParams_button_0);
+    swiParams_button_0.priority = 1 ;
+    mySwi_button_0 = Swi_create(Swi_func_button_0, &swiParams_button_0, NULL);
+    if (mySwi_button_0 == NULL) printf("mySwi_button_0 create failed");
 
     // Comprobamos que se termina la inicialización
     GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, GPIO_PIN_1);
@@ -100,7 +115,7 @@ void initButtons(void) {
     GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0);
 }
 
-
+// importante mantener esta interrupción lo más simple posible
 Void myIsr_buttons(UArg arg) {
 
     uint32_t status;
@@ -110,15 +125,29 @@ Void myIsr_buttons(UArg arg) {
     GPIOIntClear(GPIO_PORTF_BASE, status);
 
     if (status & GPIO_PIN_4) {
-        buttons_pressed[0] = !buttons_pressed[0];
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, buttons_pressed[0] ? GPIO_PIN_1 : 0);
+        Swi_post(mySwi_button_4);
     }
 
     if (status & GPIO_PIN_0) {
-        buttons_pressed[1] = !buttons_pressed[1];
-        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, buttons_pressed[1] ? GPIO_PIN_2 : 0);
+        Swi_post(mySwi_button_0);
     }
 }
 
+Void Swi_func_button_4(UArg arg0, UArg arg1) {
+    // Gestion rebotes
+    //CS(200);
 
+    buttons_pressed[0] = !buttons_pressed[0];
+    // Encendemos un led para comprobar que funciona todo bien
+    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, buttons_pressed[0] ? GPIO_PIN_1 : 0);
+}
+
+Void Swi_func_button_0(UArg arg0, UArg arg1) {
+    // Gestion rebotes
+    //CS(200);
+
+    buttons_pressed[1] = !buttons_pressed[1];
+    // Encendemos un led para comprobar que funciona todo bien
+    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_2, buttons_pressed[1] ? GPIO_PIN_2 : 0);
+}
 

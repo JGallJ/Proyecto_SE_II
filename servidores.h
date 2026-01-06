@@ -18,5 +18,8 @@ void S12 (void) ;
 void S21 (void) ;
 void S22 (void) ;
 
+// Servidor S2
+void S31 (void) ;
+void S32 (void) ;
 
 #endif /* SERVIDORES_H_ */
